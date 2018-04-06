@@ -1,17 +1,17 @@
+<%@page import="net.tanesha.recaptcha.ReCaptchaFactory"%>
 <%@page import="org.apache.commons.lang3.StringUtils"%>
 <%@page import="org.apache.commons.lang3.StringEscapeUtils"%>
-<%@page import="org.json.simple.JSONObject" %>
-<%@page import="org.json.simple.JSONValue" %>
+<%@page import="net.tanesha.recaptcha.ReCaptchaResponse"%>
+<%@page import="net.tanesha.recaptcha.ReCaptcha"%>
 <%@page import="jfix.util.I18N"%>
 <%@page import="jfix.util.Regexps"%>
-<%@page import="jfix.util.Urls" %>
 <%@page import="jease.cms.domain.User"%>
 <%@page import="jease.cms.domain.Discussion"%>
 <%@page import="jease.site.Templates"%>
 <%@page import="jease.site.Discussions"%>
 <%@page import="jease.Registry"%>
 <%@page import="jease.Names"%>
-<%!
+<%! 
 	final String JEASE_DISCUSSION_RECURSION = "Jease.Discussion.Recursion";
 %>
 <%
@@ -37,17 +37,17 @@
 	String submit = request.getParameter("submit" + id);
 	String message = null;
 
-	boolean captchaResolved = false;
-	if (enabled && toplevel && submit != null) {
+	ReCaptcha recaptcha = null;
+	if (StringUtils.isNotBlank(Registry.getParameter(Names.JEASE_RECAPTCHA_PUBLIC)) && StringUtils.isNotBlank(Registry.getParameter(Names.JEASE_RECAPTCHA_PRIVATE))) {
+		recaptcha = ReCaptchaFactory.newReCaptcha(Registry.getParameter(Names.JEASE_RECAPTCHA_PUBLIC), Registry.getParameter(Names.JEASE_RECAPTCHA_PRIVATE), true);
+	}
 
-		if (session.getAttribute(Names.JEASE_DISCUSSION_AUTHOR) == null) {
-			String outputString = Urls.readString("https://www.google.com/recaptcha/api/siteverify"
-					+ "?secret=" + Registry.getParameter(Names.JEASE_RECAPTCHA_PRIVATE)
-					+ "&response=" + request.getParameter("g-recaptcha-response"), 1000);
-			JSONObject jsonObject = (JSONObject) JSONValue.parse(outputString);
-			captchaResolved = Boolean.TRUE.equals(jsonObject.get("success"));
+	if (enabled && toplevel && submit != null) {
+		ReCaptchaResponse recaptchaResponse = null;
+		if (recaptcha != null && session.getAttribute(Names.JEASE_DISCUSSION_AUTHOR) == null) {
+			recaptchaResponse = recaptcha.checkAnswer(request.getRemoteAddr(), request.getParameter("recaptcha_challenge_field"), request.getParameter("recaptcha_response_field"));
 		}
-		if (session.getAttribute(Names.JEASE_DISCUSSION_AUTHOR) != null || captchaResolved) {
+		if (session.getAttribute(Names.JEASE_DISCUSSION_AUTHOR) != null || recaptcha == null || (recaptchaResponse != null && recaptchaResponse.isValid())) {
 			message = Discussions.addComment((Discussion) request.getAttribute("Node"), author, subject, comment, true);
 			session.setAttribute(Names.JEASE_DISCUSSION_AUTHOR, author);
 			if (message == null) {
@@ -104,16 +104,14 @@
 	<form class="Submission" action="#discussion<%= id %>" method="post">
 		<dl>
 		<dt><%= I18N.get("Name") %>:</dt>
-		<dd><input type="text" name="author<%=id %>" maxlength="60" value="<%=author != null ? StringEscapeUtils.escapeHtml4(author) : (session.getAttribute(Names.JEASE_DISCUSSION_AUTHOR) != null ? StringEscapeUtils.escapeHtml4((String) session.getAttribute(Names.JEASE_DISCUSSION_AUTHOR)) : I18N.get("Anonymous")) %>"<%= author == null ? " onFocus=\"this.value=''\"" :"" %>/></dd>
+		<dd><input type="text" name="author<%=id %>" maxlength="60" value="<%=author != null ? StringEscapeUtils.escapeXml(author) : (session.getAttribute(Names.JEASE_DISCUSSION_AUTHOR) != null ? StringEscapeUtils.escapeXml((String) session.getAttribute(Names.JEASE_DISCUSSION_AUTHOR)) : I18N.get("Anonymous")) %>"<%= author == null ? " onFocus=\"this.value=''\"" :"" %>/></dd>
 		<dt><%= I18N.get("Subject") %>:</dt>
-		<dd><input type="text" name="subject<%=id %>" maxlength="60" value="<%=subject != null ? StringEscapeUtils.escapeHtml4(subject) : "" %>"/></dd>
+		<dd><input type="text" name="subject<%=id %>" maxlength="60" value="<%=subject != null ? StringEscapeUtils.escapeXml(subject) : "" %>"/></dd>
 		<dt><%= I18N.get("Comment") %>:</dt>
-		<dd><textarea name="comment<%=id %>" rows="10"><%=comment != null ? StringEscapeUtils.escapeHtml4(comment) : "" %></textarea></dd>
-		<% if (session.getAttribute(Names.JEASE_DISCUSSION_AUTHOR) == null) { %>
+		<dd><textarea name="comment<%=id %>" rows="10"><%=comment != null ? StringEscapeUtils.escapeXml(comment) : "" %></textarea></dd>
+		<% if (recaptcha != null && session.getAttribute(Names.JEASE_DISCUSSION_AUTHOR) == null) { %>
 			<dt><%= I18N.get("Please_enter_the_code") %>:</dt>
-			<dd>
-				<div class="g-recaptcha" data-sitekey="<%=Registry.getParameter(Names.JEASE_RECAPTCHA_PUBLIC)%>"></div>
-			</dd>
+			<dd><%= recaptcha.createRecaptchaHtml(request.getParameter("error"), "clean", 0) %></dd>
 		<% } %>
 		</dl>
 		<p>

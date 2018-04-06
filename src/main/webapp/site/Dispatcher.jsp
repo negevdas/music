@@ -26,9 +26,9 @@
 		Access guard = Authorizations.findAuthorizingGuard(authorization, guards);
 		if (guard != null) {
 			if (session.getAttribute(Names.JEASE_SITE_AUTHORIZATIONS) == null) {
-				session.setAttribute(Names.JEASE_SITE_AUTHORIZATIONS, new HashSet<Object>());
+				session.setAttribute(Names.JEASE_SITE_AUTHORIZATIONS, new HashSet());
 			}
-			((Collection<Object>) session.getAttribute(Names.JEASE_SITE_AUTHORIZATIONS)).add(guard);
+			((Collection) session.getAttribute(Names.JEASE_SITE_AUTHORIZATIONS)).add(guard);
 		} else {
 			// If current user can view content in the CMS, skip authorization.
 			User user = (User) session.getAttribute(User.class.toString());
@@ -43,7 +43,7 @@
 
 	// Which template should be used to render the node?
 	String pageTemplate = Templates.get(node);
-
+	
 	// If node is page-like content (e.g. text) and no file-parameter exists in request,
 	// then include template, otherwise forward (e.g. to stream binary content).
 	if (node.isPage() && request.getParameter("file") == null) {
