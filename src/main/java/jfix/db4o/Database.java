@@ -36,7 +36,7 @@ public class Database {
 	private static ObjectDatabase odb;
 
 	static {
-		setPersistenceEngine("jfix.db4o.engine.PersistenceEnginePerst");
+		setPersistenceEngine("jfix.db4o.engine.PersistenceEngineDb4o");
 	}
 
 	/**
