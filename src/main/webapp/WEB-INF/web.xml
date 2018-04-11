@@ -23,7 +23,7 @@
             will be interpreted as path for the database folder.
         </description>
         <param-name>JEASE_DATABASE_NAME</param-name>
-        <param-value>jease</param-value>
+        <param-value>/opt/webserver/webapps/ROOT/jease</param-value>
     </context-param>
 
     <context-param>
